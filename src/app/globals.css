@@ -1,0 +1,587 @@
+@import "tailwindcss";
+
+/* ============================================================================
+   Solar Forecast Model Leaderboard — Design Tokens
+   Direction: premium analytical product. Warm neutral canvas, deep-green brand
+   anchor, restrained amber accent. Model colours are fixed and never reused
+   for status fills (PRD §19.1).
+   ========================================================================== */
+
+@theme {
+  /* --- Surfaces ------------------------------------------------------- */
+  --color-canvas: #f4f5f2;
+  --color-canvas-deep: #eceee8;
+  --color-surface: #ffffff;
+  --color-surface-muted: #fafbf9;
+  --color-surface-sunken: #f6f7f4;
+  --color-surface-raised: #f6f7f4;
+
+  /* Deep-green ground used by the masthead, the dark tooltip card and the
+     sign-in screen. Text on it uses the `ondark-*` ramp below. */
+  --color-masthead: #071a13;
+
+  /* --- Lines ---------------------------------------------------------- */
+  --color-line: #e4e7df;
+  --color-line-strong: #d3d8cb;
+  --color-line-soft: #eef0ea;
+  --color-line-hud: #b3e0cd;
+  --color-line-warn: #fbe3b3;
+  --color-line-danger: #f6c9c7;
+
+  /* --- Text ----------------------------------------------------------- */
+  --color-ink: #10221b;
+  --color-ink-2: #46544d;
+  --color-ink-3: #6b7872;
+  --color-ink-4: #939e98;
+  --color-ink-inverse: #ffffff;
+
+  /* Text ramp for the deep-green surfaces. */
+  --color-ondark: #dcf1e8;
+  --color-ondark-2: #b3e0cd;
+  --color-ondark-3: #74c4a4;
+  --color-ondark-4: #3ca07a;
+
+  /* --- Brand (deep green anchor) -------------------------------------- */
+  --color-brand-950: #071a13;
+  --color-brand-900: #0c2a20;
+  --color-brand-800: #12392c;
+  --color-brand-700: #174c39;
+  --color-brand-600: #1c6349;
+  --color-brand-500: #227e5c;
+  --color-brand-400: #3ca07a;
+  --color-brand-300: #74c4a4;
+  --color-brand-200: #b3e0cd;
+  --color-brand-100: #dcf1e8;
+  --color-brand-50: #eff9f4;
+
+  /* Semantic alias for the brand anchor. */
+  --color-hud: #12392c;
+  --color-hud-bright: #174c39;
+  --color-hud-dim: #0c2a20;
+  --color-tint: #eff9f4;
+  --color-tint-strong: #dcf1e8;
+
+  /* --- Accent (restrained amber) -------------------------------------- */
+  --color-accent-700: #9a6410;
+  --color-accent-600: #c07f12;
+  --color-accent-500: #e0a02a;
+  --color-accent-400: #f0b544;
+  --color-accent-300: #f7cd7c;
+  --color-accent-200: #fbe3b3;
+  --color-accent-100: #fdf1da;
+  --color-accent-50: #fefaf0;
+
+  --color-warn: #c07f12;
+  --color-warn-tint: #fefaf0;
+
+  /* --- Model identity colours (locked, used everywhere) --------------- */
+  --color-model-qca: #e0524f;
+  --color-model-qca-soft: #fdeceb;
+  --color-model-sunsure: #1f9d6b;
+  --color-model-sunsure-soft: #e6f6ee;
+  --color-model-nevron: #6d5ce7;
+  --color-model-nevron-soft: #eeebfd;
+  --color-actual: #16211d;
+
+  /* Visual tolerance fill — a light green wash, deliberately far paler and less
+     saturated than any model stroke (PRD §10.2). */
+  --color-tolerance: #86c79a;
+
+  /* --- Official band scale -------------------------------------------- */
+  --color-band-a: #1f9d6b;
+  --color-band-b: #e0a02a;
+  --color-band-c: #ea8034;
+  --color-band-d: #e0524f;
+  --color-band-e: #a4243f;
+
+  /* --- Semantic ------------------------------------------------------- */
+  --color-positive: #1f9d6b;
+  --color-caution: #c07f12;
+  --color-negative: #d0453f;
+  --color-danger: #d0453f;
+  --color-danger-tint: #fdeceb;
+  --color-info: #2f6f9e;
+  --color-info-tint: #eef4f9;
+
+  /* --- Typography ----------------------------------------------------- */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", monospace;
+
+  /* --- Radii ---------------------------------------------------------- */
+  --radius-card: 14px;
+  --radius-control: 10px;
+
+  /* --- Motion --------------------------------------------------------- */
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-line);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    color-scheme: light;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Every number in this product is tabular so columns never dance. */
+  .tnum,
+  .readout,
+  table,
+  .metric-value {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  ::selection {
+    background-color: var(--color-accent-200);
+    color: var(--color-brand-900);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+@layer components {
+  /* Card: grouping without domination (PRD §19.1) */
+  .card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+    box-shadow:
+      0 1px 1px rgba(16, 34, 27, 0.02),
+      0 2px 6px -2px rgba(16, 34, 27, 0.05);
+  }
+
+  /* A panel that is the primary subject of its screen. Same weight as any other
+     card — the marker is a brand hairline, not extra elevation. */
+  .card-live {
+    box-shadow:
+      inset 0 2px 0 0 var(--color-brand-700),
+      0 1px 1px rgba(16, 34, 27, 0.02),
+      0 2px 6px -2px rgba(16, 34, 27, 0.05);
+  }
+
+  .card-flush {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+  }
+
+  .eyebrow {
+    font-size: 11px;
+    line-height: 1;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-ink-4);
+  }
+
+  .label {
+    font-size: 10px;
+    line-height: 1;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-ink-4);
+  }
+
+  .hair,
+  .rule {
+    height: 1px;
+    background-color: var(--color-line);
+  }
+
+  /* Dotted underline marking "this has a definition on hover" */
+  .definable {
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-decoration-color: var(--color-ink-4);
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
+    cursor: help;
+  }
+
+  .definable:hover {
+    text-decoration-color: var(--color-brand-500);
+    color: var(--color-brand-700);
+  }
+}
+
+@layer utilities {
+  .grid-lines,
+  .hud-grid {
+    background-image:
+      linear-gradient(to right, rgba(16, 34, 27, 0.045) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(16, 34, 27, 0.045) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  .scrollbar-slim::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scrollbar-slim::-webkit-scrollbar-thumb {
+    background-color: var(--color-line-strong);
+    border-radius: 999px;
+  }
+  .scrollbar-slim::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+}
+
+/* React Day Picker overrides ------------------------------------------- */
+.rdp-root {
+  --rdp-accent-color: var(--color-brand-600);
+  --rdp-accent-background-color: var(--color-brand-50);
+  --rdp-day-height: 34px;
+  --rdp-day-width: 38px;
+  --rdp-day_button-height: 32px;
+  --rdp-day_button-width: 36px;
+  --rdp-day_button-border-radius: 8px;
+  --rdp-range_middle-background-color: var(--color-brand-50);
+  --rdp-range_middle-color: var(--color-brand-800);
+  --rdp-selected-border: none;
+  --rdp-font-family: var(--font-sans);
+  font-size: 13px;
+}
+
+.rdp-month_caption {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.rdp-weekday {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-ink-4);
+  text-transform: uppercase;
+}
+
+.rdp-today:not(.rdp-outside) {
+  color: var(--color-accent-600);
+  font-weight: 700;
+}
+
+.rdp-disabled {
+  opacity: 0.3;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--color-surface-sunken);
+  border-radius: 6px;
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0,
+    rgba(255, 255, 255, 0.7) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: shimmer 1.6s infinite;
+}
+
+/* Radix floating layers -------------------------------------------------- */
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+[data-radix-popper-content-wrapper] > * {
+  animation: pop-in 0.14s var(--ease-out-quint);
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* ============================================================================
+   Fleet overview — design pilot (`fx-` prefix)
+   Scoped to one page on purpose. Nothing here is referenced by another view, so
+   the treatment can be adopted or dropped without touching the rest.
+   ========================================================================== */
+@layer components {
+  .fx-panel {
+    position: relative;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: 16px;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      0 1px 2px rgba(16, 34, 27, 0.03),
+      0 10px 30px -18px rgba(16, 34, 27, 0.18);
+    transition:
+      box-shadow 0.28s var(--ease-out-quint),
+      border-color 0.28s var(--ease-out-quint);
+  }
+
+  .fx-panel:hover {
+    border-color: var(--color-line-strong);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      0 1px 2px rgba(16, 34, 27, 0.04),
+      0 18px 46px -22px rgba(16, 34, 27, 0.26);
+  }
+
+  /* The plant's own hairline down the leading edge — identity without a badge. */
+  .fx-rail::before {
+    content: "";
+    position: absolute;
+    top: 16px;
+    bottom: 16px;
+    left: 0;
+    width: 2px;
+    border-radius: 999px;
+    background: linear-gradient(
+      to bottom,
+      var(--color-brand-500) 0%,
+      rgba(34, 126, 92, 0.55) 45%,
+      rgba(34, 126, 92, 0.06) 100%
+    );
+  }
+
+  /* Editorial section label: caps, then a rule that runs out to the margin. */
+  .fx-rule-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-ink-4);
+  }
+
+  .fx-rule-label::after {
+    content: "";
+    flex: 1 1 auto;
+    height: 1px;
+    background: linear-gradient(to right, var(--color-line), transparent);
+  }
+
+  .fx-tile {
+    position: relative;
+    transition: background-color 0.2s ease;
+  }
+
+  .fx-tile::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 2px;
+    background-color: var(--fx-accent, transparent);
+    opacity: 0.7;
+  }
+
+  .fx-tile:hover {
+    background-color: var(--color-surface-sunken);
+  }
+
+  .fx-figure {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.03em;
+    font-weight: 600;
+  }
+
+  /* The one decorative surface on the page, kept faint: dawn over the array. */
+  .fx-dawn {
+    background:
+      radial-gradient(720px 210px at 10% 0%, rgba(240, 181, 68, 0.14), transparent 70%),
+      radial-gradient(600px 190px at 76% 0%, rgba(60, 160, 122, 0.1), transparent 72%);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Fleet overview pilot — instrumentation layer
+   The palette is untouched. What changes is the *register*: mono numerals,
+   corner registration marks, a measurement rail, and one settling sweep on
+   arrival. Precision-instrument cues on a paper ground, not a game HUD.
+   --------------------------------------------------------------------------- */
+@layer components {
+  /* Readouts move to the mono face — the single biggest shift from "report"
+     to "instrument", and it costs no colour. */
+  .fx-figure {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.012em;
+    font-weight: 600;
+    font-feature-settings: "zero" 1;
+  }
+
+  /* Registration marks at the panel corners, as on a technical drawing. */
+  .fx-corners {
+    position: absolute;
+    inset: 10px;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .fx-corners i {
+    position: absolute;
+    width: 13px;
+    height: 13px;
+    border: 0 solid rgba(34, 126, 92, 0.3);
+  }
+
+  .fx-corners i:nth-child(1) {
+    top: 0;
+    left: 0;
+    border-top-width: 1px;
+    border-left-width: 1px;
+  }
+  .fx-corners i:nth-child(2) {
+    top: 0;
+    right: 0;
+    border-top-width: 1px;
+    border-right-width: 1px;
+  }
+  .fx-corners i:nth-child(3) {
+    bottom: 0;
+    left: 0;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+  }
+  .fx-corners i:nth-child(4) {
+    bottom: 0;
+    right: 0;
+    border-bottom-width: 1px;
+    border-right-width: 1px;
+  }
+
+  /* A ruler, not a divider: ticks every 8px with a longer mark every 40px. */
+  .fx-ticks {
+    height: 7px;
+    background-image:
+      repeating-linear-gradient(
+        to right,
+        var(--color-line-strong) 0 1px,
+        transparent 1px 40px
+      ),
+      repeating-linear-gradient(to right, var(--color-line) 0 1px, transparent 1px 8px);
+    background-size:
+      100% 7px,
+      100% 4px;
+    background-position:
+      left top,
+      left top;
+    background-repeat: repeat-x;
+  }
+
+  /* Survey graticule behind the page head, faded out at the edges. */
+  .fx-graticule {
+    background-image:
+      linear-gradient(to right, rgba(16, 34, 27, 0.055) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(16, 34, 27, 0.055) 1px, transparent 1px);
+    background-size: 40px 40px;
+    mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.85), transparent 88%);
+  }
+
+  /* One sweep as the panel arrives, then gone. Signals "reading taken". */
+  .fx-sweep {
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    height: 42%;
+    pointer-events: none;
+    z-index: 2;
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      rgba(60, 160, 122, 0.09),
+      transparent
+    );
+    animation: fx-sweep 1.6s cubic-bezier(0.22, 1, 0.36, 1) 1 both;
+  }
+
+  @keyframes fx-sweep {
+    0% {
+      transform: translateY(-110%);
+      opacity: 0;
+    }
+    18% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(260%);
+      opacity: 0;
+    }
+  }
+
+  /* Status LED: a slow breath, so "live" is legible without a spinner. */
+  .fx-led {
+    position: relative;
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background-color: var(--fx-led, var(--color-brand-500));
+  }
+
+  .fx-led::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-color: inherit;
+    animation: fx-breathe 2.8s ease-in-out infinite;
+  }
+
+  @keyframes fx-breathe {
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 0.55;
+    }
+    50% {
+      transform: scale(2.6);
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fx-sweep {
+      animation: none;
+      display: none;
+    }
+    .fx-led::after {
+      animation: none;
+      opacity: 0;
+    }
+  }
+}
