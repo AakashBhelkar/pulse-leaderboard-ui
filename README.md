@@ -50,10 +50,6 @@ fleet. Multi-day charts pan and zoom, and clicking a day opens that plant's 96 b
 Forecast vs Actual evidence directly beneath them, the model leaderboard, then supporting
 evidence (official band distribution plus daily evidence or the intraday error profile).
 
-**Day detail** — the 96-block investigation: day-scoped metrics, a full-width 00:00–23:45
-chart, and an exact block-by-block table. Each model's reading carries its own deviation
-and a tolerance glyph (`✓` within, `!` outside), so no cross-referencing is needed.
-
 **Comparison** — up to six plant/period selections. Side-by-side forecast panels on an
 identical visual grammar, a metric focus chart defaulting to capacity-normalised RMSE, and
 the comparison matrix. Every selection states its eligible interval count, so a 79-day
