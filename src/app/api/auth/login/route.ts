@@ -4,6 +4,7 @@ import {
   SESSION_TTL_SECONDS,
   createSessionToken,
   getSharedPassword,
+  isSessionSigningConfigured,
 } from "@/lib/auth";
 
 /** POST /api/auth/login — validates the shared password server-side. */
@@ -21,6 +22,20 @@ export async function POST(request: Request) {
 
   /* No code configured means the gate is shut, not open. Checked before the
      comparison so a null can never be matched by an equal null from the body. */
+  /* Without a signing key the cookie could be issued but never verified — the
+     proxy would reject it and the reader would land back on the sign-in page
+     with no indication why. Refuse up front and name the missing variable. */
+  if (!isSessionSigningConfigured()) {
+    return NextResponse.json(
+      {
+        error: "not_configured",
+        message:
+          "Sessions cannot be signed on this server. Set AUTH_SECRET to a long random value.",
+      },
+      { status: 503 },
+    );
+  }
+
   const expected = getSharedPassword();
   if (expected === null) {
     return NextResponse.json(

@@ -10,22 +10,29 @@ export const SESSION_COOKIE = "sfl_session";
 export const SESSION_TTL_SECONDS = 60 * 60 * 12;
 
 /**
- * Per-process fallback signing key.
+ * The signing key, or null when none is usable.
  *
- * Deliberately random rather than a constant. A literal default committed to the
- * repository is a published HMAC key: anyone reading the source could forge a
- * session cookie for any deployment that had not overridden it. A random key
- * instead means sessions do not survive a restart when AUTH_SECRET is unset,
- * which is a visible nuisance in development and cannot be exploited.
+ * Null rather than a fallback of any kind. A committed constant is a published
+ * HMAC key — anyone reading the source could forge a session for a deployment
+ * that had not overridden it. A random per-process key is no better here: the
+ * proxy that verifies the cookie runs in a different runtime instance from the
+ * route that signs it, so each generates its own value and every session is
+ * rejected — login appearing to succeed, then bouncing straight back to the
+ * sign-in page with nothing to explain why.
+ *
+ * So there is no fallback. Unconfigured means sessions cannot be issued, and
+ * the login route says exactly that.
  */
-const EPHEMERAL_SECRET = crypto.randomUUID() + crypto.randomUUID();
-
-function getSecret(): string {
+function getSecret(): string | null {
   const configured = process.env.AUTH_SECRET;
-  if (configured && configured.length >= 16 && configured !== "change-me-to-a-long-random-string") {
-    return configured;
-  }
-  return EPHEMERAL_SECRET;
+  if (!configured || configured.length < 16) return null;
+  if (configured === "change-me-to-a-long-random-string") return null;
+  return configured;
+}
+
+/** Whether the server can issue and verify sessions at all. */
+export function isSessionSigningConfigured(): boolean {
+  return getSecret() !== null;
 }
 
 /**
@@ -50,9 +57,11 @@ function toBase64Url(bytes: Uint8Array): string {
 }
 
 async function sign(payload: string): Promise<string> {
+  const secret = getSecret();
+  if (secret === null) throw new Error("AUTH_SECRET is not configured.");
   const key = await crypto.subtle.importKey(
     "raw",
-    enc.encode(getSecret()),
+    enc.encode(secret),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"],
