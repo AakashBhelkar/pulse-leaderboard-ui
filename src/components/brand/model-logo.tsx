@@ -127,20 +127,29 @@ const NEVRON_LIFT = 1.4;
 
 export function VendorLockup({
   height = 18,
+  plate = true,
   className,
 }: {
   height?: number;
+  /**
+   * The white plate exists to rescue Nevron Blue from a dark ground. On a light
+   * surface it is invisible at best and a seam at worst, so it comes off — both
+   * marks are drawn for white and need no help there.
+   */
+  plate?: boolean;
   className?: string;
 }) {
   return (
     <span
       className={cn(
-        "flex items-center gap-3.5 rounded-[10px] bg-white px-3.5 py-2 shadow-[0_1px_2px_rgba(0,0,0,0.25)]",
+        "flex items-center gap-3.5",
+        plate &&
+          "rounded-[10px] bg-white px-3.5 py-2 shadow-[0_1px_2px_rgba(0,0,0,0.25)]",
         className,
       )}
     >
       <ModelLogo model="sunsure_internal" variant="wordmark" height={height} />
-      <span aria-hidden="true" className="h-5 w-px bg-line-strong" />
+      <span aria-hidden="true" className={cn("w-px", plate ? "h-5 bg-line-strong" : "h-6 bg-white/20")} />
       <ModelLogo model="nevron" variant="wordmark" height={Math.round(height * NEVRON_LIFT)} />
     </span>
   );
