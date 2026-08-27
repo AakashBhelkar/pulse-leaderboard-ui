@@ -26,8 +26,6 @@ export function SelectionEditor({
   onChange,
   onRemove,
   accent,
-  varies,
-  sharedEditable,
 }: {
   selection: CompareSelection;
   index: number;
@@ -35,17 +33,6 @@ export function SelectionEditor({
   onChange: (next: CompareSelection) => void;
   onRemove: () => void;
   accent: string;
-  /**
-   * Which dimension this row is allowed to vary. The other one is fixed for the
-   * whole comparison and shown read-only, so "different plant over a different
-   * period" — a combination with no meaningful reading — cannot be built.
-   */
-  varies: "plant" | "period";
-  /**
-   * True on the row that owns the shared dimension. It stays editable there —
-   * one place, applying to every row — and is read-only everywhere else.
-   */
-  sharedEditable?: boolean;
 }) {
   const plant = PLANTS[selection.plant_id];
   const [open, setOpen] = useState(false);
@@ -82,14 +69,6 @@ export function SelectionEditor({
       </span>
 
       {/* Plant */}
-      {varies === "period" && !sharedEditable ? (
-        <span className="flex h-9 items-center gap-2 rounded-lg border border-transparent bg-transparent px-3">
-          <span className="text-[13px] font-semibold text-ink">{plant.name}</span>
-          <span className="text-[11.5px] text-ink-3">
-            {plant.capacity_mw} MW · {plant.state_short}
-          </span>
-        </span>
-      ) : (
       <DropdownMenu.Root>
         <DropdownMenu.Trigger asChild>
           <button className="flex h-9 items-center gap-2 rounded-lg border border-line-strong bg-surface-sunken px-3 transition-colors hover:border-hud">
@@ -131,20 +110,8 @@ export function SelectionEditor({
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
-      )}
 
       {/* Period */}
-      {varies === "plant" && !sharedEditable ? (
-        <span className="flex h-9 items-center gap-2 rounded-lg px-3">
-          <CalendarDays className="size-3.5 text-ink-4" />
-          <span className="tnum text-[13px] font-medium text-ink">
-            {formatRange(selection.from, selection.to)}
-          </span>
-          <span className="text-[11.5px] text-ink-3">
-            {days} {days === 1 ? "day" : "days"}
-          </span>
-        </span>
-      ) : (
       <Popover.Root open={open} onOpenChange={handleOpenChange}>
         <Popover.Trigger asChild>
           <button className="flex h-9 items-center gap-2 rounded-lg border border-line-strong bg-surface-sunken px-3 transition-colors hover:border-hud">
@@ -207,7 +174,6 @@ export function SelectionEditor({
           </Popover.Content>
         </Popover.Portal>
       </Popover.Root>
-      )}
 
       <button
         onClick={onRemove}

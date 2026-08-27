@@ -43,14 +43,23 @@ const toCell = (o: DsmOutcome | null | undefined): Cell | null =>
       }
     : null;
 
-function cheapestOf(models: Partial<Record<ModelId, Cell>>): ModelId | null {
-  return MODEL_IDS.reduce<ModelId | null>((best, id) => {
+function cheapestOf(
+  models: Partial<Record<ModelId, Cell>>,
+  among: readonly ModelId[] = MODEL_IDS,
+): ModelId | null {
+  return among.reduce<ModelId | null>((best, id) => {
     const c = models[id];
     if (!c) return best;
     const b = best ? models[best] : undefined;
     return b === undefined || c.penalty < b.penalty ? id : best;
   }, null);
 }
+
+/* The QCA feed is what gets submitted as the schedule, so the baseline column
+   and the QCA counterfactual hold the same number. They are drawn as one
+   column, "Scheduled / QCA", rather than inviting the reader to work out why
+   two headings agree to the rupee. */
+const ALTERNATIVES = MODEL_IDS.filter((id) => id !== "external_qca");
 
 /**
  * Cost of deviation, per plant and then for the fleet.
@@ -121,7 +130,7 @@ export function DsmCounterfactual({
       eligible: s.coverage.eligible_intervals,
       scheduled,
       models,
-      cheapest: cheapestOf(models),
+      cheapest: cheapestOf(models, ALTERNATIVES),
     });
   });
 
@@ -146,7 +155,7 @@ export function DsmCounterfactual({
     eligible: fleetEligible,
     scheduled: fleetScheduled.revenue > 0 ? asCell(fleetScheduled) : null,
     models: fleetModelCells,
-    cheapest: cheapestOf(fleetModelCells),
+    cheapest: cheapestOf(fleetModelCells, ALTERNATIVES),
   };
 
   const simulated = basis === "simulated_model_attribution" || basis === null;
@@ -174,8 +183,8 @@ export function DsmCounterfactual({
       <header className="relative z-[3] px-6 pt-5 pb-4">
         <p className="fx-rule-label">Cost of deviation</p>
         <p className="mt-2.5 max-w-[54ch] text-[12.5px] leading-relaxed text-ink-3">
-          What settlement cost each plant, and what it would have cost had each model been submitted
-          as the schedule instead.
+          What settlement costs each plant today on the QCA schedule, and what it would have cost
+          had each alternative model been submitted instead.
         </p>
       </header>
 
@@ -196,11 +205,18 @@ export function DsmCounterfactual({
                   </span>
                 </th>
                 <th className="px-2.5 py-2.5 text-right">
-                  <span className="text-[10px] font-semibold tracking-[0.1em] text-ink-4 uppercase">
-                    {simulated ? "Scheduled*" : "Scheduled"}
+                  <span className="inline-flex items-center gap-1.5">
+                    <span
+                      aria-hidden="true"
+                      className="h-2.5 w-[3px] rounded-full"
+                      style={{ backgroundColor: MODELS.external_qca.color }}
+                    />
+                    <span className="text-[10px] font-semibold tracking-[0.1em] text-ink-4 uppercase">
+                      Scheduled / QCA
+                    </span>
                   </span>
                 </th>
-                {MODEL_IDS.map((id) => (
+                {ALTERNATIVES.map((id) => (
                   <th key={id} className="px-2.5 py-2.5 text-right">
                     <span className="inline-flex items-center gap-1.5">
                       <span
@@ -234,7 +250,7 @@ export function DsmCounterfactual({
           above it.
         </p>
         <p className="text-[11px] leading-snug text-ink-4">
-          {simulated ? `* ${DSM_BASIS_TEXT.simulated_model_attribution.text}` : DSM_BASIS_TEXT.actual_schedule_linked.text}
+          {simulated ? DSM_BASIS_TEXT.simulated_model_attribution.text : DSM_BASIS_TEXT.actual_schedule_linked.text}
         </p>
       </footer>
     </section>
@@ -265,8 +281,14 @@ function Row({ row, worst, total }: { row: PlantRow; worst: number; total?: bool
         </span>
       </th>
 
-      <MoneyCell cell={row.scheduled} worst={worst} color="var(--color-ink-3)" total={total} />
-      {MODEL_IDS.map((id) => (
+      <MoneyCell
+        cell={row.models.external_qca ?? row.scheduled}
+        worst={worst}
+        color={MODELS.external_qca.color}
+        total={total}
+        label={`Scheduled / QCA, ${row.name}`}
+      />
+      {ALTERNATIVES.map((id) => (
         <MoneyCell
           key={id}
           cell={row.models[id] ?? null}

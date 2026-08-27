@@ -2,12 +2,13 @@
 
 import { useMemo, useState } from "react";
 import type { EChartsOption } from "echarts";
-import { CalendarDays, ChevronDown, Factory, Info, Plus, RotateCcw } from "lucide-react";
+import { ChevronDown, Info, Plus, RotateCcw } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { useComparison } from "@/lib/api/queries";
 import { useWorkspace } from "@/components/workspace/workspace-context";
 import { SelectionEditor } from "@/components/compare/selection-editor";
 import { SelectionCharts } from "@/components/compare/selection-charts";
+import { BandAComparison } from "@/components/compare/band-a-comparison";
 import { EChart } from "@/components/charts/echart";
 import {
   TIP,
@@ -38,7 +39,7 @@ import {
 } from "@/lib/metrics/normalize";
 import type { CompareSelection, MetricKey, ModelId, PlantId } from "@/lib/types";
 import { PLANT_LIST } from "@/lib/config/plants";
-import { addDays, formatRange } from "@/lib/utils/date";
+import { formatRange } from "@/lib/utils/date";
 import { formatInt, formatMetric } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 
@@ -75,62 +76,17 @@ export default function ComparePage() {
       to,
     },
   ]);
-  /**
-   * A comparison varies exactly one thing.
-   *
-   * Letting both the plant and the period differ produced rows with nothing in
-   * common — no shared weather, no shared period, different capacity and a
-   * different band structure. Constraining it to one axis is what makes the
-   * matrix readable, and it is enforced structurally rather than warned about.
-   */
-  const [axis, setAxis] = useState<"plant" | "period">("plant");
-
   // Normalised RMSE is the default: it is the only error metric that stays
   // meaningful when the selections span plants of different capacity.
   const [focus, setFocus] = useState<ComparisonMetricKey>("nrmse_pct");
 
   const { data, isPending, isError, error, refetch } = useComparison(selections, scenario);
 
-  function switchAxis(next: "plant" | "period") {
-    if (next === axis) return;
-    setAxis(next);
-    setSelections((rows) => {
-      const first = rows[0];
-      if (!first) return rows;
-      return next === "plant"
-        ? // Comparing plants: every row adopts the first row's period.
-          rows.map((r) => ({ ...r, from: first.from, to: first.to }))
-        : // Comparing periods: every row adopts the first row's plant.
-          rows.map((r) => ({ ...r, plant_id: first.plant_id }));
-    });
-  }
-
-  /**
-   * One pass: the varying dimension lands on the edited row, the fixed one lands
-   * on every row. That invariant is what keeps the comparison to a single axis
-   * no matter which row was touched.
-   */
+  /* Each row owns both its plant and its period. The cross-plant and
+     sample-size warnings below carry the caveats that a shared axis used to
+     enforce structurally. */
   function update(id: string, next: CompareSelection) {
-    setSelections((rows) =>
-      rows.map((row) => {
-        const target = row.id === id;
-        return axis === "plant"
-          ? // Plant varies per row; period is shared.
-            {
-              ...row,
-              plant_id: target ? next.plant_id : row.plant_id,
-              from: next.from,
-              to: next.to,
-            }
-          : // Period varies per row; plant is shared.
-            {
-              ...row,
-              plant_id: next.plant_id,
-              from: target ? next.from : row.from,
-              to: target ? next.to : row.to,
-            };
-      }),
-    );
+    setSelections((rows) => rows.map((row) => (row.id === id ? next : row)));
   }
 
   function reset() {
@@ -150,21 +106,14 @@ export default function ComparePage() {
     const last = selections[selections.length - 1];
     setSelections((s) => [
       ...s,
-      axis === "plant"
-        ? {
-            // Another plant over the same period: only the plant differs.
-            id: `sel-${Date.now()}`,
-            plant_id: nextUnusedPlant(selections),
-            from: last?.from ?? from,
-            to: last?.to ?? to,
-          }
-        : {
-            // The preceding window for the same plant.
-            id: `sel-${Date.now()}`,
-            plant_id: last?.plant_id ?? plantId,
-            from: addDays(last?.from ?? from, -(Math.max(1, selections.length) * 7)),
-            to: addDays(last?.to ?? to, -(Math.max(1, selections.length) * 7)),
-          },
+      {
+        // A plant not already in the comparison, over the same period — the
+        // most common next selection, and every field stays editable after.
+        id: `sel-${Date.now()}`,
+        plant_id: nextUnusedPlant(selections),
+        from: last?.from ?? from,
+        to: last?.to ?? to,
+      },
     ]);
   }
 
@@ -266,9 +215,8 @@ export default function ComparePage() {
           Compare plants and periods
         </h1>
         <p className="mt-2.5 max-w-[80ch] text-[12.5px] leading-relaxed text-ink-3">
-          One axis at a time — several plants over a shared period, or one plant across
-          several periods. Winners stay independent per metric within each selection; nothing
-          is combined across selections.
+          Any combination of plant and period, up to six selections. Winners stay independent
+          per metric within each selection; nothing is combined across selections.
         </p>
       </div>
 
@@ -276,11 +224,7 @@ export default function ComparePage() {
       <Card className="overflow-hidden">
         <CardHeader
           title="Selections"
-          subtitle={
-            axis === "plant"
-              ? "Comparing plants over one shared period"
-              : "Comparing periods for one plant"
-          }
+          subtitle={`${selections.length} selections · each evaluated on its own eligible interval set`}
           actions={
             <div className="flex items-center gap-2">
               <Button size="sm" variant="ghost" onClick={reset}>
@@ -295,39 +239,11 @@ export default function ComparePage() {
           }
         />
         <div className="flex flex-wrap items-center gap-3 border-y border-line-soft bg-surface-muted px-5 py-3">
-          <div className="flex rounded-lg border border-line-strong bg-white p-0.5">
-            {(
-              [
-                { key: "plant", label: "Across plants", icon: Factory },
-                { key: "period", label: "Across periods", icon: CalendarDays },
-              ] as const
-            ).map((opt) => (
-              <button
-                key={opt.key}
-                onClick={() => switchAxis(opt.key)}
-                aria-pressed={axis === opt.key}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-[6px] px-2.5 py-1 text-[11.5px] font-medium transition-colors",
-                  axis === opt.key
-                    ? "bg-brand-50 text-brand-700"
-                    : "text-ink-3 hover:text-ink",
-                )}
-              >
-                <opt.icon className="size-3.5" />
-                {opt.label}
-              </button>
-            ))}
-          </div>
-
           <p className="text-[11.5px] leading-snug text-ink-3">
-            {axis === "plant"
-              ? "One shared period, set on the first row. Each row picks its own plant."
-              : "One shared plant, set on the first row. Each row picks its own period."}
+            Each row picks its own plant and its own period. Comparisons that span plants or
+            unequal sample sizes are flagged below rather than prevented.
           </p>
-
-          <span className="ml-auto text-[11px] text-ink-4">
-            {selections.length} of 6
-          </span>
+          <span className="ml-auto text-[11px] text-ink-4">{selections.length} of 6</span>
         </div>
 
         <div className="space-y-2 px-5 py-4">
@@ -338,8 +254,6 @@ export default function ComparePage() {
               index={i}
               accent={ACCENTS[i % ACCENTS.length]}
               canRemove={selections.length > 1}
-              varies={axis}
-              sharedEditable={i === 0}
               onChange={(next) => update(sel.id, next)}
               onRemove={() => setSelections((s) => s.filter((x) => x.id !== sel.id))}
             />
@@ -364,89 +278,6 @@ export default function ComparePage() {
               ))}
             </div>
           ) : null}
-
-          {/* Side-by-side evidence */}
-          <div>
-            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="text-[12px] font-semibold tracking-[0.14em] text-ink uppercase">
-                Forecast evidence, side by side
-              </h2>
-              <p className="text-[11.5px] text-ink-3">
-                Identical grammar on every panel · sample size stated per selection
-              </p>
-            </div>
-            {isPending || !data ? (
-              <div className="grid gap-4 xl:grid-cols-2">
-                {selections.map((s) => (
-                  <Skeleton key={s.id} className="h-[300px]" />
-                ))}
-              </div>
-            ) : (
-              <SelectionCharts
-                selections={selections}
-                rows={data.rows}
-                scenario={scenario}
-                accents={ACCENTS}
-              />
-            )}
-          </div>
-
-          {/* Metric focus */}
-          <Card className="overflow-hidden">
-            <CardHeader
-              title="Metric focus"
-              subtitle={
-                <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span>
-                    {focusDef.label} across every selection ·{" "}
-                    {focusDef.direction === "higher"
-                      ? "higher is better"
-                      : focusDef.direction === "zero"
-                        ? "closer to zero is better"
-                        : "lower is better"}
-                  </span>
-                  {crossPlant ? (
-                    <Badge tone={focusComparable ? "positive" : "caution"}>
-                      {focusComparable ? "cross-plant comparable" : "single-plant only"}
-                    </Badge>
-                  ) : null}
-                </span>
-              }
-              actions={
-                <div className="flex items-center gap-2">
-                  <span className="hidden text-[10px] font-semibold tracking-[0.14em] text-ink-4 uppercase sm:block">
-                    Metric
-                  </span>
-                  <MetricPicker value={focus} onChange={setFocus} />
-                </div>
-              }
-            />
-
-            {crossPlant && !focusComparable ? (
-              <div className="flex items-start gap-2.5 border-b border-line-warn bg-warn-tint px-5 py-2.5 text-[11.5px] leading-relaxed text-warn">
-                <Info className="mt-[1px] size-3.5 shrink-0" />
-                <p>
-                  {focusDef.label} is either an absolute MW figure or tied to a
-                  state-specific band structure, so these bars are not comparable between
-                  plants of different capacity. Switch to NRMSE, NMAE or Bias % for a fair
-                  cross-plant read.
-                </p>
-              </div>
-            ) : null}
-
-            <div className="px-3 py-3">
-              {isPending || !data ? (
-                <Skeleton className="h-[268px]" />
-              ) : (
-                <EChart
-                  option={focusOption}
-                  notMerge
-                  style={{ height: 268 }}
-                  ariaLabel={`${focusDef.label} compared across selections`}
-                />
-              )}
-            </div>
-          </Card>
 
           {/* Matrix */}
           <Card className="overflow-hidden">
@@ -649,6 +480,92 @@ export default function ComparePage() {
               selections.
             </div>
           </Card>
+
+          <BandAComparison rows={data?.rows} accents={ACCENTS} isPending={isPending} />
+
+          {/* Side-by-side evidence */}
+          <div>
+            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="text-[12px] font-semibold tracking-[0.14em] text-ink uppercase">
+                Forecast evidence, side by side
+              </h2>
+              <p className="text-[11.5px] text-ink-3">
+                Identical grammar on every panel · sample size stated per selection
+              </p>
+            </div>
+            {isPending || !data ? (
+              <div className="grid gap-4 xl:grid-cols-2">
+                {selections.map((s) => (
+                  <Skeleton key={s.id} className="h-[300px]" />
+                ))}
+              </div>
+            ) : (
+              <SelectionCharts
+                selections={selections}
+                rows={data.rows}
+                scenario={scenario}
+                accents={ACCENTS}
+              />
+            )}
+          </div>
+
+          {/* Metric focus */}
+          <Card className="overflow-hidden">
+            <CardHeader
+              title="Metric focus"
+              subtitle={
+                <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span>
+                    {focusDef.label} across every selection ·{" "}
+                    {focusDef.direction === "higher"
+                      ? "higher is better"
+                      : focusDef.direction === "zero"
+                        ? "closer to zero is better"
+                        : "lower is better"}
+                  </span>
+                  {crossPlant ? (
+                    <Badge tone={focusComparable ? "positive" : "caution"}>
+                      {focusComparable ? "cross-plant comparable" : "single-plant only"}
+                    </Badge>
+                  ) : null}
+                </span>
+              }
+              actions={
+                <div className="flex items-center gap-2">
+                  <span className="hidden text-[10px] font-semibold tracking-[0.14em] text-ink-4 uppercase sm:block">
+                    Metric
+                  </span>
+                  <MetricPicker value={focus} onChange={setFocus} />
+                </div>
+              }
+            />
+
+            {crossPlant && !focusComparable ? (
+              <div className="flex items-start gap-2.5 border-b border-line-warn bg-warn-tint px-5 py-2.5 text-[11.5px] leading-relaxed text-warn">
+                <Info className="mt-[1px] size-3.5 shrink-0" />
+                <p>
+                  {focusDef.label} is either an absolute MW figure or tied to a
+                  state-specific band structure, so these bars are not comparable between
+                  plants of different capacity. Switch to NRMSE, NMAE or Bias % for a fair
+                  cross-plant read.
+                </p>
+              </div>
+            ) : null}
+
+            <div className="px-3 py-3">
+              {isPending || !data ? (
+                <Skeleton className="h-[268px]" />
+              ) : (
+                <EChart
+                  option={focusOption}
+                  notMerge
+                  style={{ height: 268 }}
+                  ariaLabel={`${focusDef.label} compared across selections`}
+                />
+              )}
+            </div>
+          </Card>
+
         </>
       )}
     </div>

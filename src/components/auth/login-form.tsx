@@ -5,6 +5,28 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Eye, EyeOff, LoaderCircle, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/primitives";
 
+/**
+ * Whether Microsoft Entra ID sign-in is wired up.
+ *
+ * Flipped by the deployment once the app registration exists — tenant, client
+ * id and redirect URI. Until then the button renders in a stated pending state
+ * rather than failing on click, because a dead sign-in button teaches people
+ * the product is broken.
+ */
+const SSO_READY = false;
+
+/** Microsoft's four-square mark, drawn inline so it needs no asset. */
+function MicrosoftMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 23 23" aria-hidden="true" className={className}>
+      <rect x="1" y="1" width="10" height="10" fill="#F25022" />
+      <rect x="12" y="1" width="10" height="10" fill="#7FBA00" />
+      <rect x="1" y="12" width="10" height="10" fill="#00A4EF" />
+      <rect x="12" y="12" width="10" height="10" fill="#FFB900" />
+    </svg>
+  );
+}
+
 export function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
@@ -41,7 +63,39 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-7">
+    <div className="mt-7">
+      {/* Organisation sign-in first: it is the path most people should take
+          once it exists, and the access code is the fallback beneath it. */}
+      <button
+        type="button"
+        disabled={!SSO_READY}
+        aria-describedby={SSO_READY ? undefined : "sso-status"}
+        onClick={() => {
+          /* Left unwired on purpose. The real handler starts the Entra ID
+             authorization-code flow, which is a full-page redirect out to
+             Microsoft and back to a callback route — not a client-side
+             navigation. Nothing here should guess at that shape before the app
+             registration exists. */
+        }}
+        className="flex h-11 w-full items-center justify-center gap-2.5 rounded-[10px] border border-line-strong bg-white text-[13.5px] font-medium text-ink transition-colors enabled:hover:border-hud enabled:hover:bg-surface-sunken disabled:cursor-not-allowed disabled:opacity-55"
+      >
+        <MicrosoftMark className="size-4" />
+        Sign in with Microsoft
+      </button>
+
+      {SSO_READY ? null : (
+        <p id="sso-status" className="mt-2 text-[11.5px] leading-snug text-ink-4">
+          Single sign-on is not configured on this deployment yet. Use the access code below.
+        </p>
+      )}
+
+      <div className="my-5 flex items-center gap-3">
+        <span className="h-px flex-1 bg-line" />
+        <span className="text-[10.5px] tracking-[0.14em] text-ink-4 uppercase">or</span>
+        <span className="h-px flex-1 bg-line" />
+      </div>
+
+    <form onSubmit={onSubmit}>
       <label htmlFor="access-code" className="eyebrow">
         Access code
       </label>
@@ -102,5 +156,6 @@ export function LoginForm() {
         )}
       </Button>
     </form>
+    </div>
   );
 }

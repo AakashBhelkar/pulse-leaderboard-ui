@@ -121,11 +121,11 @@ export default function LoginPage() {
               <div className="mt-6 md:mt-0">
                 <p className="eyebrow">Restricted workspace</p>
                 <h2 className="mt-3 text-[20px] leading-tight font-semibold tracking-[-0.018em] text-ink">
-                  Enter access code
+                  Sign in
                 </h2>
                 <p className="mt-2.5 text-[12.5px] leading-relaxed text-ink-3">
-                  Shared with a single access code, validated on the server. It never reaches the
-                  browser bundle.
+                  Sign in with your Microsoft account, or use the shared access code. The code is
+                  validated on the server and never reaches the browser bundle.
                 </p>
               </div>
 

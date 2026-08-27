@@ -10,11 +10,14 @@ import { MetricTooltip } from "@/components/metrics/metric-tooltip";
 import { DirectionArrow, ModelDot, Skeleton } from "@/components/ui/primitives";
 import { formatMetric } from "@/lib/utils/format";
 
+/* Money first, matching the fleet panels: the DSM figure is what a commercial
+   reader looks for, and it leads rather than trailing the accuracy metrics it
+   is derived from. */
 const CARDS: { metric: MetricKey; title: string; icon: LucideIcon }[] = [
+  { metric: "estimated_dsm_impact_pct", title: "Lowest DSM %", icon: IndianRupee },
   { metric: "rmse_mw", title: "Best RMSE", icon: Activity },
-  { metric: "mae_mw", title: "Best MAE", icon: BarChart3 },
   { metric: "band_a_pct", title: "Best Band A", icon: ShieldCheck },
-  { metric: "estimated_dsm_impact_pct", title: "Lowest DSM impact", icon: IndianRupee },
+  { metric: "mae_mw", title: "Best MAE", icon: BarChart3 },
 ];
 
 /**

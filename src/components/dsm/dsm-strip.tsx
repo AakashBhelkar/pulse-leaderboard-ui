@@ -8,17 +8,16 @@ import type { DsmComparison, DsmOutcome, ModelId } from "@/lib/types";
 import { formatInr, formatInt } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 
+/** The models that could replace the QCA schedule, which is the baseline. */
+const ALTERNATIVES = MODEL_IDS.filter((id) => id !== "external_qca");
+
 /**
  * One plant's cost of deviation, for the scope currently on screen.
  *
- * Sits directly above the chart because it is the answer the chart is evidence
- * for: the lines show which forecast tracked Actual, this shows what that was
- * worth. Laid out across rather than down so it costs one band of height and
- * does not push the chart below the fold.
- *
- * Every figure comes from the payload's `dsm` block, priced by the same routine
- * for the baseline and all three alternatives, so no row can be measured on a
- * different basis from its neighbours.
+ * Laid out across rather than down so it costs one band of height. Every figure
+ * comes from the payload's `dsm` block, priced by the same routine for the
+ * schedule and both alternatives, so no tile can be measured on a different
+ * basis from its neighbours.
  */
 export function DsmStrip({
   dsm,
@@ -34,39 +33,42 @@ export function DsmStrip({
 }) {
   const simulated = dsm?.basis === "simulated_model_attribution";
 
+  /* The QCA feed is what gets submitted, so the baseline and the QCA
+     counterfactual are the same number. One tile carries both, and "cheapest"
+     is contested only among the alternatives that could replace it. */
   const cheapest = dsm
-    ? MODEL_IDS.reduce<{ id: ModelId; penalty: number } | null>((best, id) => {
+    ? ALTERNATIVES.reduce<{ id: ModelId; penalty: number } | null>((best, id) => {
         const o = dsm.counterfactual[id];
         if (!o) return best;
         return best === null || o.penalty_inr < best.penalty ? { id, penalty: o.penalty_inr } : best;
       }, null)
     : null;
 
-  const baseline = dsm?.as_scheduled ?? null;
+  const baseline = dsm?.counterfactual.external_qca ?? dsm?.as_scheduled ?? null;
 
   return (
     <Card className="overflow-hidden">
       <CardHeader
         title="Cost of deviation"
-        subtitle={`What settlement cost over ${scopeLabel}, and what it would have cost had each model been submitted as the schedule`}
+        subtitle={`What settlement costs over ${scopeLabel} on the QCA schedule, and what it would have cost had each alternative been submitted instead`}
       />
 
       {isPending || !dsm ? (
-        <div className="grid gap-2 px-5 pb-4 sm:grid-cols-2 xl:grid-cols-4">
-          {[0, 1, 2, 3].map((i) => (
+        <div className="grid gap-2 px-5 pb-4 sm:grid-cols-3">
+          {[0, 1, 2].map((i) => (
             <Skeleton key={i} className="h-[92px] rounded-lg" />
           ))}
         </div>
       ) : (
-        <div className="grid gap-2 px-5 pb-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-2 px-5 pb-4 sm:grid-cols-3">
           <Tile
-            label={simulated ? "As scheduled (simulated)" : "As scheduled"}
+            label="Scheduled / QCA"
             outcome={baseline}
             baseline={null}
-            color="var(--color-ink-3)"
-            note="baseline"
+            color={MODELS.external_qca.color}
+            note="as submitted today"
           />
-          {MODEL_IDS.map((id) => (
+          {ALTERNATIVES.map((id) => (
             <Tile
               key={id}
               label={MODELS[id].name}

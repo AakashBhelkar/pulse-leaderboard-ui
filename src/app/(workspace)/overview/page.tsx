@@ -1,15 +1,12 @@
 "use client";
 
-import Link from "next/link";
-import { GitCompareArrows } from "lucide-react";
 import { PLANT_LIST } from "@/lib/config/plants";
 import { PlantPanel } from "@/components/fleet/plant-panel";
 import { FleetScoreboard } from "@/components/fleet/fleet-scoreboard";
 import { DsmCounterfactual } from "@/components/fleet/dsm-counterfactual";
 import { motion } from "motion/react";
 import { useWorkspace } from "@/components/workspace/workspace-context";
-import { diffDays, formatRange } from "@/lib/utils/date";
-import { formatInt } from "@/lib/utils/format";
+import { formatRange } from "@/lib/utils/date";
 
 /**
  * Fleet overview — every plant's winners and forecast evidence on one screen,
@@ -23,8 +20,6 @@ export default function FleetOverviewPage() {
   const { from, to, scenario } = useWorkspace();
 
   const totalCapacity = PLANT_LIST.reduce((sum, p) => sum + p.capacity_mw, 0);
-  const days = diffDays(from, to) + 1;
-  const compareHref = `/compare?from=${from}&to=${to}&scenario=${scenario}`;
 
   return (
     <div className="space-y-5">
@@ -49,43 +44,25 @@ export default function FleetOverviewPage() {
               <Metric label="Installed" value={`${totalCapacity} MW`} />
               <Rule />
               <Metric label="Period" value={formatRange(from, to)} />
-              <Rule />
-              <Metric
-                label="Expected blocks"
-                value={formatInt(days * 96 * PLANT_LIST.length)}
-              />
             </dl>
           </div>
-
-          <Link
-            href={compareHref}
-            className="group inline-flex h-10 items-center gap-2 rounded-full bg-accent-400 pr-4 pl-4.5 text-[13px] font-medium text-brand-900 shadow-[0_1px_2px_rgba(154,100,16,0.22)] transition-colors hover:bg-accent-300"
-          >
-            <GitCompareArrows className="size-4" />
-            Compare selections
-          </Link>
         </div>
 
         <div className="fx-ticks mt-5 w-full opacity-70" aria-hidden="true" />
 
-        <p className="mt-4 max-w-[86ch] text-[12.5px] leading-relaxed text-ink-3">
-          Winners are resolved independently per metric within each plant — nothing is
-          combined into a fleet score, and raw MW errors are never compared between plants
-          of different size. The period selector applies to every plant below.
-        </p>
         </div>
       </header>
 
-      {/* Side by side only where the scoreboard clears its own table width: six
-          columns need ~865px, which the 1.35fr share does not reach until the
-          viewport is about 1600px. Below that both panels take the full row
-          rather than one of them scrolling sideways. */}
-      <div className="grid gap-5 min-[1600px]:grid-cols-[1.35fr_1fr]">
+      {/* Equal halves, on the same breakpoint as the plant panels below, so the
+          page reads as one two-column grid rather than three different ones. */}
+      <div className="grid gap-5 min-[1400px]:grid-cols-2">
         <FleetScoreboard from={from} to={to} scenario={scenario} />
         <DsmCounterfactual from={from} to={to} scenario={scenario} />
       </div>
 
-      <div className="space-y-5">
+      {/* Two per row from 1400px. Below that a half-width chart is too narrow
+          to read a day's shape in, so the panels take the full width instead. */}
+      <div className="grid gap-5 min-[1400px]:grid-cols-2">
         {PLANT_LIST.map((plant, i) => (
           <motion.div
             key={plant.id}
