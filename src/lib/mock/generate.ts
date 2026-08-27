@@ -146,13 +146,6 @@ function dayOfYear(day: string): number {
   return Math.floor((ms - start) / 86400000);
 }
 
-/**
- * How far the intraday revision closes the gap between the incumbent forecast
- * and what actually happened. 0 = never revised, 1 = perfect hindsight. Real
- * revision windows close well before delivery, so this sits nearer the middle.
- */
-const SCHEDULE_HINDSIGHT = 0.55;
-
 /** Eligibility rule applied by the mock "backend" (PRD §16.2). */
 export const ELIGIBILITY_RULE =
   "Daylight intervals only — blocks whose clear-sky potential exceeds 2% of plant capacity, with a valid Actual reading.";
@@ -228,18 +221,6 @@ export function generateDay(
     residuals[id] = series;
   }
 
-  // The schedule carries its own slow drift, so it is never a clean blend of
-  // series the reader can already see on the chart.
-  const scheduleDrift = (() => {
-    const r = makeRand(hashSeed(plant.id, day, scenario.id, "sched"));
-    const out = new Array<number>(BLOCKS_PER_DAY).fill(0);
-    let prev = r.normal(0, 1);
-    for (let i = 0; i < BLOCKS_PER_DAY; i++) {
-      prev = 0.94 * prev + Math.sqrt(1 - 0.94 ** 2) * r.normal(0, 1);
-      out[i] = prev;
-    }
-    return out;
-  })();
 
   const { sunrise, noonBlock } = solarWindow(doy);
   const rows: IntervalRecord[] = [];
@@ -307,23 +288,12 @@ export function generateDay(
     }
 
     /* ---- The submitted schedule -------------------------------------------
-       Not a copy of any model. Operators build the schedule from the incumbent
-       feed and then revise it intraday as the day resolves, so it lands closer
-       to Actual than any raw day-ahead forecast while still missing the sharp
-       cloud events that arrive too late to re-declare. That is modelled here as
-       the incumbent value pulled part-way toward Actual, with its own drift. */
-    let schedule: number | null = null;
-    if (!daylight) {
-      schedule = 0;
-    } else if (actual !== null) {
-      const incumbent = values.external_qca ?? values.sunsure_internal ?? actual;
-      const revised = incumbent + (actual - incumbent) * SCHEDULE_HINDSIGHT;
-      schedule = clamp(
-        revised * (1 + scheduleDrift[block] * 0.02 * scenario.errorScale),
-        0,
-        plant.capacity_mw,
-      );
-    }
+       The incumbent QCA forecast, unmodified: that feed is what gets declared.
+       Modelling a separately-revised schedule made the settlement baseline
+       differ from the QCA counterfactual, so the interface ended up carrying
+       two columns for one fact. Where QCA has not reported, nothing was
+       submitted and the schedule is null. */
+    const schedule: number | null = daylight ? values.external_qca : 0;
 
     rows.push({
       timestamp: blockTimestamp(day, block),

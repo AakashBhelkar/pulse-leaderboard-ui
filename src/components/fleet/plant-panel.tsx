@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, TriangleAlert } from "lucide-react";
+import { ArrowRight, ChevronDown, TriangleAlert } from "lucide-react";
 import { useDaily, useSeries, useSummary } from "@/lib/api/queries";
 import { ForecastChart } from "@/components/charts/forecast-chart";
 import { BandBars } from "@/components/evidence/band-bars";
-import { BandTrend } from "./band-trend";
 import { ModelLogo } from "@/components/brand/model-logo";
 import { MetricTooltip } from "@/components/metrics/metric-tooltip";
 import { Skeleton } from "@/components/ui/primitives";
@@ -17,13 +17,17 @@ import type { MetricKey, ModelId, PlantConfig } from "@/lib/types";
 import type { ScenarioId } from "@/lib/mock/scenarios";
 import { formatInt, formatMetric, formatPct } from "@/lib/utils/format";
 import { METRIC_CATALOG } from "@/lib/config/metric-catalog";
-import { diffDays, formatRange } from "@/lib/utils/date";
+import { formatRange } from "@/lib/utils/date";
 import { cn } from "@/lib/utils/cn";
 
+/* Money first, then error, then compliance. The DSM figure is the one a
+   commercial reader looks for, so it leads rather than trailing the accuracy
+   metrics it is derived from. */
 const HEADLINE: { metric: MetricKey; label: string }[] = [
+  { metric: "estimated_dsm_impact_pct", label: "Lowest DSM %" },
   { metric: "rmse_mw", label: "Best RMSE" },
-  { metric: "mae_mw", label: "Best MAE" },
   { metric: "band_a_pct", label: "Best Band A" },
+  { metric: "mae_mw", label: "Best MAE" },
 ];
 
 /**
@@ -52,10 +56,7 @@ export function PlantPanel({
   const series = useSeries(scope);
   const daily = useDaily(scope);
   const multiDay = from !== to;
-  const periodDays = diffDays(from, to) + 1;
-
-  /* Below three days a trend line is noise dressed as insight. */
-  const showTrend = periodDays >= 3 && Boolean(daily.data?.days.length);
+  const [showBands, setShowBands] = useState(false);
 
   /* What the asset actually did, alongside how well it was predicted. Error
      statistics on their own leave a reader with no sense of the plant. */
@@ -82,7 +83,7 @@ export function PlantPanel({
   const degraded = coverage ? coverage.coverage_pct < 99.5 || !coverage.like_for_like : false;
 
   return (
-    <article className="fx-panel fx-rail relative overflow-hidden">
+    <article className="fx-panel fx-rail @container/panel relative overflow-hidden">
       {/* Registration marks and a single arrival sweep. Decoration with a job:
           they read as an instrument taking a reading, not as ornament. */}
       <span aria-hidden="true" className="fx-corners">
@@ -94,10 +95,10 @@ export function PlantPanel({
       <span aria-hidden="true" className="fx-sweep" />
 
       {/* Identity */}
-      <header className="relative z-[3] flex flex-wrap items-start justify-between gap-x-6 gap-y-3 px-6 pt-5 pb-4">
-        <div className="min-w-0">
-          <div className="flex items-baseline gap-2.5">
-            <h2 className="text-[20px] leading-none font-semibold tracking-[-0.022em] text-ink">
+      <header className="relative z-[3] px-4 pt-3.5 pb-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div className="flex min-w-0 items-baseline gap-2.5">
+            <h2 className="text-[18px] leading-none font-semibold tracking-[-0.022em] text-ink">
               {plant.name}
             </h2>
             <span className="fx-figure text-[12px] text-ink-3">
@@ -108,7 +109,19 @@ export function PlantPanel({
             </span>
           </div>
 
-          <dl className="mt-3 flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-[11px] text-ink-4">
+          <div className="flex shrink-0 items-center gap-2.5">
+            {summary.data ? <NormalisedLeader plant={plant} summary={summary.data} /> : null}
+            <Link
+              href={monitorHref}
+              className="group inline-flex h-8 items-center gap-1.5 rounded-full bg-brand-800 pr-3 pl-3.5 text-[12px] font-medium text-white transition-colors hover:bg-brand-700"
+            >
+              Open monitor
+              <ArrowRight className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
+            </Link>
+          </div>
+        </div>
+
+        <dl className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[10.5px] text-ink-4">
             <Fact label="Period" value={formatRange(from, to)} />
             <Sep />
             <Fact label="Band A" value={`±${plant.visual_tolerance_pct}% of Actual`} />
@@ -151,33 +164,31 @@ export function PlantPanel({
                 <Fact label="Peak" value={`${output.peak.toFixed(1)} MW`} />
               </>
             ) : null}
-          </dl>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {summary.data ? <NormalisedLeader plant={plant} summary={summary.data} /> : null}
-          <Link
-            href={monitorHref}
-            className="group inline-flex h-9 items-center gap-2 rounded-full bg-brand-800 pr-3.5 pl-4 text-[12.5px] font-medium text-white transition-colors hover:bg-brand-700"
-          >
-            Open monitor
-            <ArrowRight className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
-          </Link>
-        </div>
+        </dl>
       </header>
 
       {summary.isError ? (
-        <div className="px-6 pb-6">
+        <div className="px-4 pb-5">
           <ErrorState error={summary.error} onRetry={() => summary.refetch()} compact />
         </div>
       ) : (
         <>
           {/* Winners + coverage */}
-          <div className="grid grid-cols-2 border-y border-line-soft lg:grid-cols-4">
+          <div className="grid grid-cols-2 border-y border-line-soft @[400px]/panel:grid-cols-3 @[600px]/panel:grid-cols-5">
             {HEADLINE.map((card) => {
               const winnerId = summary.data?.winners[card.metric] ?? null;
               const model = summary.data?.models.find((m) => m.model === winnerId);
               const value = model ? (model[card.metric] as number | null) : null;
+
+              /* Band A reads as a count, not a share. "390/424 blocks" is the
+                 thing a reader can check against the block table; a percentage
+                 is a derived figure they would have to trust. */
+              const isBandA = card.metric === "band_a_pct";
+              const bandABlocks =
+                isBandA && model && coverage
+                  ? `${formatInt(model.band_counts.A ?? 0)}/${formatInt(coverage.eligible_intervals)}`
+                  : null;
+
               return (
                 <Tile
                   key={card.metric}
@@ -185,7 +196,10 @@ export function PlantPanel({
                   pending={summary.isPending}
                   metric={card.metric}
                   evaluated={model?.evaluated_intervals}
-                  value={value === null ? "—" : formatMetric(card.metric, value)}
+                  value={
+                    bandABlocks ?? (value === null ? "—" : formatMetric(card.metric, value))
+                  }
+                  caption={isBandA && value !== null ? `${formatPct(value)} of eligible` : undefined}
                   winner={winnerId}
                   margin={
                     summary.data ? marginOverRunnerUp(summary.data, card.metric) : null
@@ -206,49 +220,14 @@ export function PlantPanel({
             />
           </div>
 
-          {/* Band A, day by day. An average hides whether compliance was steady
-              or came in a good week and a bad one. */}
-          {showTrend && daily.data ? (
-            <div className="flex items-center gap-5 border-b border-line-soft px-6 py-3">
-              <div className="shrink-0">
-                <p className="text-[9.5px] leading-none font-semibold tracking-[0.16em] text-ink-4 uppercase">
-                  Band A · daily
-                </p>
-                <p className="fx-figure mt-1.5 text-[11px] text-ink-4">
-                  {periodDays} days · to 100%
-                </p>
-              </div>
-              <div className="min-w-0 flex-1">
-                <BandTrend daily={daily.data} height={74} />
-              </div>
-              <div className="hidden shrink-0 flex-col gap-1 sm:flex">
-                {MODEL_IDS.map((id) => {
-                  const last = [...daily.data!.days]
-                    .reverse()
-                    .find((d) => d.models.some((m) => m.model === id));
-                  const value = last?.models.find((m) => m.model === id)?.band_a_pct;
-                  return (
-                    <span key={id} className="flex items-center gap-1.5">
-                      <span
-                        aria-hidden="true"
-                        className="h-2 w-[3px] rounded-full"
-                        style={{ backgroundColor: MODELS[id].color }}
-                      />
-                      <span className="fx-figure w-[42px] text-right text-[10.5px] text-ink-2">
-                        {value === undefined ? "—" : `${value.toFixed(0)}%`}
-                      </span>
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
-          ) : null}
 
-          {/* Evidence: the curve on the left, how it settled into bands on the
-              right. Same period, same eligible blocks, side by side. */}
-          <div className="grid xl:grid-cols-[1.55fr_1fr]">
-            <section className="px-6 pt-5 pb-2 xl:border-r xl:border-line-soft">
-              <p className="fx-rule-label mb-2">Forecast vs Actual</p>
+          {/* The curve gets the full panel width — at two panels per row that
+              is about half the page, which is the narrowest a day's shape stays
+              readable at. The band outcome moves beneath it, folded away by
+              default: it answers a follow-up question, not the first one. */}
+          <div>
+            <section className="px-4 pt-3.5 pb-1.5">
+              <p className="fx-rule-label mb-1.5">Forecast vs Actual</p>
               {series.isPending || !series.data ? (
                 <Skeleton className="h-[216px]" />
               ) : (
@@ -268,18 +247,37 @@ export function PlantPanel({
               )}
             </section>
 
-            <section className="px-6 pt-5 pb-2">
-              <p className="fx-rule-label mb-2">Band outcome</p>
-              {summary.isPending || !summary.data ? (
-                <Skeleton className="h-[216px]" />
-              ) : (
-                <BandBars summary={summary.data} height={216} compact />
-              )}
+            <section className="border-t border-line-soft">
+              <button
+                onClick={() => setShowBands((v) => !v)}
+                aria-expanded={showBands}
+                className="flex w-full items-center gap-2 px-4 py-2 text-left transition-colors hover:bg-surface-sunken"
+              >
+                <ChevronDown
+                  className={cn(
+                    "size-3.5 shrink-0 text-ink-4 transition-transform duration-200",
+                    showBands && "rotate-180",
+                  )}
+                />
+                <span className="fx-rule-label">Band outcome</span>
+                <span className="ml-auto text-[11px] text-ink-4">
+                  {showBands ? "Hide" : "Show"}
+                </span>
+              </button>
+              {showBands ? (
+                <div className="px-4 pb-2">
+                  {summary.isPending || !summary.data ? (
+                    <Skeleton className="h-[216px]" />
+                  ) : (
+                    <BandBars summary={summary.data} height={216} compact />
+                  )}
+                </div>
+              ) : null}
             </section>
           </div>
 
           {/* Legend */}
-          <footer className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-line-soft bg-surface-muted px-6 py-3">
+          <footer className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-line-soft bg-surface-muted px-4 py-2">
             <MiniLegend tolerancePct={plant.visual_tolerance_pct} />
             <span className="ml-auto text-[11px] text-ink-4">
               {multiDay
@@ -361,35 +359,35 @@ function Tile({
   return (
     <MetricTooltip metric={metric} value={value} evaluatedIntervals={evaluated} side="bottom">
       <div
-        className="fx-tile cursor-help px-6 py-4"
+        className="fx-tile min-w-0 cursor-help px-3 py-2.5"
         style={meta ? ({ "--fx-accent": meta.color } as React.CSSProperties) : undefined}
       >
-        <p className="text-[9.5px] leading-none font-semibold tracking-[0.16em] text-ink-4 uppercase">
+        <p className="min-h-[2.2em] text-[9px] leading-[1.3] font-semibold tracking-[0.1em] text-ink-4 uppercase">
           {label}
         </p>
 
         {pending ? (
-          <Skeleton className="mt-3 h-7 w-24" />
+          <Skeleton className="mt-1.5 h-5 w-16" />
         ) : (
-          <p className="mt-3 flex items-baseline gap-2">
+          <div className="mt-1">
             <span
               className={cn(
-                "fx-figure text-[27px] leading-none",
+                "fx-figure block truncate text-[18px] leading-none @[900px]/panel:text-[21px]",
                 warn ? "text-warn" : "text-ink",
               )}
             >
               {value}
             </span>
             {margin ? (
-              <span className="fx-figure text-[10.5px] whitespace-nowrap text-ink-4">
+              <span className="fx-figure mt-1 block truncate text-[9.5px] text-ink-4">
                 {margin} clear
               </span>
             ) : null}
-          </p>
+          </div>
         )}
 
         {typeof fill === "number" ? (
-          <span className="mt-2.5 block h-[3px] w-full overflow-hidden rounded-full bg-line-soft">
+          <span className="mt-2 block h-[3px] w-full overflow-hidden rounded-full bg-line-soft">
             <span
               className="block h-full rounded-full transition-[width] duration-700"
               style={{
@@ -400,11 +398,11 @@ function Tile({
           </span>
         ) : null}
 
-        <div className="mt-2.5 flex h-4 items-center gap-1.5 text-[11px] text-ink-3">
+        <div className="mt-1.5 flex h-4 min-w-0 items-center gap-1.5 overflow-hidden text-[10px] whitespace-nowrap text-ink-3">
           {meta ? (
             <>
               {meta.brand ? (
-                <ModelLogo model={meta.id} height={13} />
+                <ModelLogo model={meta.id} height={11} />
               ) : (
                 <span
                   aria-hidden="true"
@@ -519,7 +517,11 @@ function marginOverRunnerUp(
   const dir = METRIC_CATALOG[metric].direction;
   const runnerUp = dir === "higher" ? Math.max(...others) : Math.min(...others);
   const margin = Math.abs(value - runnerUp);
-  if (margin <= 0) return null;
 
-  return metric.endsWith("_pct") ? `+${margin.toFixed(1)}pp` : `+${margin.toFixed(3)}`;
+  /* A lead is only worth printing if it survives the precision it is printed
+     at. "+0.0pp clear" claims a gap where the two models effectively tied. */
+  if (metric.endsWith("_pct")) {
+    return margin >= 0.05 ? `+${margin.toFixed(1)}pp` : null;
+  }
+  return margin >= 0.0005 ? `+${margin.toFixed(3)}` : null;
 }

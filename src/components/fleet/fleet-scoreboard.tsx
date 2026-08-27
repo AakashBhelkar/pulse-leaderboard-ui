@@ -88,14 +88,14 @@ export function FleetScoreboard({
       </header>
 
       <div className="scrollbar-slim overflow-x-auto">
-        <table className="w-full min-w-[680px] border-collapse">
+        <table className="w-full min-w-[560px] border-collapse">
           <thead>
             <tr className="border-y border-line-soft bg-surface-muted">
               <th className="px-6 py-2.5 text-left text-[9.5px] font-semibold tracking-[0.16em] text-ink-4 uppercase">
                 Plant
               </th>
               {COLUMNS.map((col) => (
-                <th key={col.metric} className="px-3.5 py-2.5 text-left">
+                <th key={col.metric} className="px-2 py-2 text-left">
                   <MetricTooltip metric={col.metric}>
                     <span className="cursor-help text-[9.5px] font-semibold tracking-[0.16em] text-ink-4 uppercase">
                       {col.label}
@@ -103,7 +103,7 @@ export function FleetScoreboard({
                   </MetricTooltip>
                 </th>
               ))}
-              <th className="px-6 py-2.5 text-right text-[9.5px] font-semibold tracking-[0.16em] text-ink-4 uppercase">
+              <th className="px-3 py-2 text-right text-[9px] font-semibold tracking-[0.12em] text-ink-4 uppercase">
                 NRMSE lead
               </th>
             </tr>
@@ -113,18 +113,18 @@ export function FleetScoreboard({
               const summary = summaries[i];
               return (
                 <tr key={plant.id} className="border-b border-line-soft last:border-0">
-                  <th scope="row" className="px-6 py-3 text-left">
-                    <span className="block text-[13.5px] font-semibold tracking-[-0.01em] text-ink">
+                  <th scope="row" className="px-3 py-2.5 text-left">
+                    <span className="block text-[12.5px] font-semibold tracking-[-0.01em] whitespace-nowrap text-ink">
                       {plant.name}
                     </span>
-                    <span className="fx-figure mt-0.5 block text-[10.5px] text-ink-4">
-                      {plant.capacity_mw} MW · {plant.state_short} · Band A ±
+                    <span className="fx-figure mt-0.5 block text-[10px] whitespace-nowrap text-ink-4">
+                      {plant.capacity_mw} MW · {plant.state_short} · ±
                       {plant.visual_tolerance_pct}%
                     </span>
                   </th>
 
                   {COLUMNS.map((col) => (
-                    <td key={col.metric} className="px-3.5 py-3">
+                    <td key={col.metric} className="px-2 py-2.5">
                       {pending || !summary ? (
                         <Skeleton className="h-6 w-24 rounded-full" />
                       ) : (
@@ -230,7 +230,7 @@ function WinnerChip({
           table scrolled inside itself at 1600px. */}
       <span className="inline-flex cursor-help flex-col items-start gap-1">
         <span
-          className="inline-flex items-center gap-2 rounded-full border py-1 pr-2.5 pl-2"
+          className="inline-flex items-center gap-1.5 rounded-full border py-[3px] pr-2 pl-1.5"
           style={{ borderColor: `${meta.color}33`, backgroundColor: `${meta.color}0f` }}
         >
           <span
@@ -238,19 +238,19 @@ function WinnerChip({
             className="h-3 w-[3px] shrink-0 rounded-full"
             style={{ backgroundColor: meta.color }}
           />
-          <span className="text-[11.5px] font-medium whitespace-nowrap text-ink">
+          <span className="text-[11px] font-medium whitespace-nowrap text-ink">
             {meta.shortName}
           </span>
-          <span className="fx-figure text-[11.5px] whitespace-nowrap text-ink-2">
+          <span className="fx-figure text-[11px] whitespace-nowrap text-ink-2">
             {formatMetric(metric, value)}
           </span>
         </span>
         {marginText ? (
-          <span className="fx-figure pl-2 text-[10px] whitespace-nowrap text-ink-4">
+          <span className="fx-figure pl-1.5 text-[9.5px] whitespace-nowrap text-ink-4">
             {marginText}
           </span>
         ) : (
-          <span className="pl-2 text-[10px] whitespace-nowrap text-ink-4">too close to call</span>
+          <span className="pl-1.5 text-[9.5px] whitespace-nowrap text-ink-4">too close to call</span>
         )}
       </span>
     </MetricTooltip>

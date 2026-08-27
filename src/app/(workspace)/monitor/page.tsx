@@ -182,13 +182,8 @@ export default function PlantMonitorPage() {
       {/* 1 — independent metric winners */}
       <WinnerCards summary={view} isPending={pending} />
 
-      {/* 2 — what the accuracy above was worth, before the chart that evidences it */}
-      <DsmStrip
-        dsm={view?.dsm}
-        eligibleIntervals={view?.coverage.eligible_intervals}
-        scopeLabel={scopeLabel}
-        isPending={pending}
-      />
+      {/* 2 — the authoritative comparison table, above the chart that evidences it */}
+      <Leaderboard summary={view} isPending={pending} />
 
       {/* 3 — the evidence */}
       {(dayScoped ? dayQuery.isError : seriesQuery.isError) ? (
@@ -208,8 +203,13 @@ export default function PlantMonitorPage() {
 
       {view ? <CoverageNote summary={view} /> : null}
 
-      {/* 4 — the authoritative comparison table */}
-      <Leaderboard summary={view} isPending={pending} />
+      {/* 4 — what the accuracy above was worth */}
+      <DsmStrip
+        dsm={view?.dsm}
+        eligibleIntervals={view?.coverage.eligible_intervals}
+        scopeLabel={scopeLabel}
+        isPending={pending}
+      />
 
       {/* 5 — supporting evidence */}
       <div className="grid gap-4 xl:grid-cols-2">
